@@ -1,6 +1,6 @@
 from replacement_algorithm.base import *
 import collections
-
+import intervals
 
 class lru(ReplaceAlgo):
     def __init__(self, cacheSize):
@@ -14,33 +14,51 @@ class lru(ReplaceAlgo):
 
     def lookup(self, req: SimpleRequest) -> bool:
         self.requestTimes += 1
-        id = req.id
-        if self.check(id):
-            self.cacheStack.move_to_end(id)
+        if self.check(req):
+            self.cacheStack.move_to_end(req.id)
             self.hitTimes += 1
             return True
         return False
 
-    def check(self, id: int) -> bool:
-        if id in self.cacheStack:
-            return True
+    def check(self, req:SimpleRequest) -> bool:
+        if req.id in self.cacheStack:
+            cacheObj = self.cacheStack[req.id]
+            reqInterval = intervals.closed(req.start,req.end)
+            if reqInterval in cacheObj.interval:
+                return True
         return False
 
     def admit(self,req:SimpleRequest):
-        if self.check(req.id):
+        if self.check(req):
             return
-        size = req.size
-        if size > self.cacheSize:
-            print("Unaccpetable Request Size")
-        while size+self.currentSize > self.cacheSize :
-            self.evict()
-        self.originTraffic += size
-        self.currentSize += size
+        realSize = req.end - req.start +1
 
-        self.cacheStack[req.id] = CacheObject(req)
+        if realSize > self.cacheSize:
+            print("Unaccpetable Request Size")
+            exit(0)
+
+        uncacheSize = 0
+        finalCacheObj = CacheObject(req)
+
+        if req.id in self.cacheStack:
+            cacheObj = self.cacheStack[req.id]
+            reqInterval = intervals.closed(req.start,req.end)
+            finalInterval = cacheObj.interval | reqInterval
+            uncacheSize = getIntervalSize(finalInterval) - getIntervalSize(cacheObj.interval)
+            finalCacheObj.interval = finalInterval
+        else:
+            uncacheSize = req.end - req.start + 1
+
+        while uncacheSize+self.currentSize > self.cacheSize :
+            self.evict()
+
+        self.originTraffic += uncacheSize
+        self.currentSize += uncacheSize
+
+        self.cacheStack[req.id] = finalCacheObj
 
     def evict(self):
-        obj = self.cacheStack.popitem(False)
+        obj = self.cacheStack.popitem(False)[1]
         self.currentSize -= obj.size
 
     def statics(self):
