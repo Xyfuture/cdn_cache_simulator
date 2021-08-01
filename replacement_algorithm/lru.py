@@ -1,4 +1,4 @@
-from replacement_algorithm.base import *
+from .base import *
 import collections
 import intervals
 

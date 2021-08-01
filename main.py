@@ -3,16 +3,16 @@ import csv
 import os
 from io import StringIO
 from tqdm import tqdm
-from replacement_algorithm import lru,base
+from replacement_algorithm import lru,base,content_aware
 
 
 
 def evaluate(path='./cdn_data/'):
-    cdn_cache = lru.lru(50000000000)
-
+    # cdn_cache = lru.lru(50000000000)
+    cdn_cache = content_aware.ContentAware(50000000000,'./config/cache_config.ini')
     labels = ['time_stamp', 'host_id', 'object_id', 'size', 'start', 'end']
     files = os.listdir(path)
-    files = files[0:10]
+    files = files[0:100]
     for cur_file in tqdm(files):
         if cur_file.endswith(".csv"):
             with open(path + cur_file, 'r') as f:
